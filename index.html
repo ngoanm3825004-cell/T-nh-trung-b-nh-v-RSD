@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Máy Tính Trung Bình & %RSD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+      background: #06080f;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       ANIMATED BACKGROUND
+    ═══════════════════════════════════════════════════════════ */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .blob {
+      position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.4; z-index: 0;
+      animation: blobMove 12s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; top: -10%; right: -5%; background: radial-gradient(circle, rgba(99,102,241,0.3), transparent 70%); }
+    .blob-2 { width: 400px; height: 400px; bottom: -10%; left: -5%; background: radial-gradient(circle, rgba(6,182,212,0.25), transparent 70%); animation-delay: 4s; }
+    .blob-3 { width: 350px; height: 350px; top: 40%; left: 55%; background: radial-gradient(circle, rgba(236,72,153,0.2), transparent 70%); animation-delay: 2s; }
+
+    @keyframes blobMove {
+      0% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -20px) scale(1.05); }
+      66% { transform: translate(-20px, 20px) scale(0.95); }
+      100% { transform: translate(10px, -10px) scale(1.02); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════════════ */
+    .container {
+      position: relative; z-index: 10;
+      max-width: 520px; margin: 0 auto;
+      padding: 40px 16px 60px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+      color: #a5b4fc; font-size: 13px; font-weight: 500;
+      margin-bottom: 16px;
+      animation: fadeSlideDown 0.6s ease-out;
+    }
+    .badge .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #818cf8;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    header {
+      text-align: center; margin-bottom: 32px;
+      animation: fadeSlideDown 0.7s ease-out;
+    }
+    header h1 {
+      font-size: clamp(28px, 6vw, 44px);
+      font-weight: 900; line-height: 1.15;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 40%, #c084fc 70%, #f0abfc 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 5s ease infinite;
+    }
+    header p {
+      color: #64748b; font-size: 14px; margin-top: 12px;
+      max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       GLASS CARD
+    ═══════════════════════════════════════════════════════════ */
+    .glass-card {
+      width: 100%;
+      background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+      animation: fadeSlideUp 0.6s ease-out;
+    }
+    .glass-card + .glass-card { margin-top: 16px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION TITLE
+    ═══════════════════════════════════════════════════════════ */
+    .section-title {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+    }
+    .section-icon {
+      width: 34px; height: 34px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .section-icon.blue { background: rgba(99,102,241,0.15); }
+    .section-title span {
+      font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.88);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       INPUT GROUP
+    ═══════════════════════════════════════════════════════════ */
+    .input-group {
+      position: relative; margin-bottom: 14px;
+    }
+    .input-group .icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 20px; z-index: 2;
+      transition: transform 0.3s;
+    }
+    .input-group .tag {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; color: #334155;
+      font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 14px 44px 14px 50px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: #fff;
+      font-size: 17px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: all 0.3s;
+    }
+    .input-group input::placeholder {
+      color: #475569; font-family: 'Inter', sans-serif; font-size: 14px;
+    }
+    .input-group input:focus {
+      border-color: rgba(99,102,241,0.5);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15), 0 0 24px rgba(99,102,241,0.1);
+    }
+    .input-group input:focus ~ .icon { transform: translateY(-50%) scale(1.2); }
+
+    /* ═══════════════════════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════════════════════ */
+    .btn-row {
+      display: flex; gap: 12px; margin-top: 24px;
+    }
+    .btn-calc {
+      flex: 1; padding: 14px 20px;
+      border-radius: 16px; border: none; cursor: pointer;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+      background-size: 200% 200%;
+      color: #fff; font-size: 15px; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+    }
+    .btn-calc:hover {
+      background-position: 100% 0;
+      box-shadow: 0 6px 30px rgba(99,102,241,0.45);
+      transform: translateY(-2px);
+    }
+    .btn-calc:active { transform: translateY(0) scale(0.98); }
+    .btn-calc svg { width: 20px; height: 20px; }
+
+    .btn-reset {
+      padding: 14px 20px;
+      border-radius: 16px; border: 1.5px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); color: #94a3b8;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.3s;
+    }
+    .btn-reset:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+    .btn-reset:active { transform: scale(0.97); }
+
+    /* ═══════════════════════════════════════════════════════════
+       ERROR
+    ═══════════════════════════════════════════════════════════ */
+    .error-msg {
+      display: none; align-items: center; gap: 8px;
+      padding: 12px 16px; border-radius: 14px;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
+      color: #fca5a5; font-size: 13px; margin-top: 16px;
+    }
+    .error-msg.show { display: flex; animation: fadeSlideUp 0.3s ease-out; }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESULTS AREA
+    ═══════════════════════════════════════════════════════════ */
+    #results-area {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      margin-top: 16px;
+    }
+    #results-area.show {
+      display: flex;
+      animation: fadeSlideUp 0.5s ease-out;
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    .stat-card {
+      text-align: center; padding: 22px 16px;
+      border-radius: 20px;
+      background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+      cursor: default;
+    }
+    .stat-card:hover { transform: translateY(-4px) scale(1.02); }
+    .stat-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 600; margin-bottom: 6px;
+    }
+    .stat-label.indigo { color: rgba(165,180,252,0.7); }
+    .stat-label.purple { color: rgba(192,132,252,0.7); }
+    .stat-value {
+      font-size: clamp(22px, 5vw, 28px); font-weight: 700;
+      font-family: 'JetBrains Mono', monospace; color: #fff;
+    }
+    .stat-tag {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      margin-top: 8px;
+    }
+    .stat-tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .stat-tag .dot.indigo { background: #818cf8; }
+    .stat-tag .dot.purple { background: #a78bfa; }
+    .stat-tag span { font-size: 11px; color: #475569; }
+
+    /* ═══════════════════════════════════════════════════════════
+       RSD GAUGE
+    ═══════════════════════════════════════════════════════════ */
+    .gauge-card {
+      margin-top: 14px; text-align: center; padding: 28px;
+    }
+    .gauge-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 600; color: rgba(103,232,249,0.7); margin-bottom: 20px;
+    }
+    .gauge-wrap { position: relative; display: inline-block; }
+    .gauge-wrap svg { transform: rotate(-90deg); }
+    .gauge-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 9; }
+    .gauge-fill {
+      fill: none; stroke-width: 9; stroke-linecap: round;
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.5s;
+    }
+    .gauge-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .gauge-value {
+      font-size: 28px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .gauge-unit { font-size: 12px; color: #64748b; font-weight: 500; }
+    .gauge-badge {
+      display: inline-block; margin-top: 14px;
+      padding: 5px 14px; border-radius: 100px;
+      font-size: 13px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .gauge-badge.excellent { color: #6ee7b7; background: rgba(16,185,129,0.12); }
+    .gauge-badge.acceptable { color: #fcd34d; background: rgba(245,158,11,0.12); }
+    .gauge-badge.poor { color: #fca5a5; background: rgba(239,68,68,0.12); }
+
+    /* Formula */
+    .formula-box {
+      margin-top: 18px; padding: 12px;
+      border-radius: 12px; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px; color: #475569;
+      font-family: 'JetBrains Mono', monospace; text-align: center;
+      word-break: break-all;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       BAR CHART
+    ═══════════════════════════════════════════════════════════ */
+    .bar-chart { margin-top: 14px; }
+    .bar-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 600; color: rgba(244,114,182,0.7); margin-bottom: 14px;
+    }
+    .bar-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .bar-icon { width: 24px; text-align: center; font-size: 16px; }
+    .bar-track {
+      flex: 1; height: 28px; background: rgba(255,255,255,0.04);
+      border-radius: 10px; overflow: hidden; position: relative;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 10px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+      width: 0;
+    }
+    .bar-fill.c1 { background: linear-gradient(90deg, #6366f1, #3b82f6); }
+    .bar-fill.c2 { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+    .bar-fill.c3 { background: linear-gradient(90deg, #06b6d4, #14b8a6); }
+    .bar-value {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 12px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.8);
+    }
+    /* mean line */
+    .mean-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 4px;
+    }
+    .mean-track { flex: 1; position: relative; height: 18px; }
+    .mean-line { position: absolute; top: 0; width: 2px; height: 100%; background: rgba(250,204,21,0.7); border-radius: 2px; transition: left 1s; }
+    .mean-label { font-size: 11px; color: rgba(250,204,21,0.6); font-family: 'JetBrains Mono', monospace; margin-left: 4px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SUMMARY TABLE
+    ═══════════════════════════════════════════════════════════ */
+    .summary-card { margin-top: 14px; }
+    .summary-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 600; color: rgba(110,231,183,0.7); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .summary-table {
+      width: 100%; border-collapse: collapse;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .summary-table th {
+      text-align: left; padding: 10px 16px; font-size: 12px;
+      color: #64748b; font-weight: 500;
+      background: rgba(255,255,255,0.03);
+    }
+    .summary-table th:last-child { text-align: right; }
+    .summary-table td {
+      padding: 10px 16px; font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .summary-table td:last-child { text-align: right; font-weight: 600; }
+    .summary-table .row-val td { color: #cbd5e1; }
+    .summary-table .row-mean { background: rgba(99,102,241,0.08); }
+    .summary-table .row-mean td { color: #a5b4fc; }
+    .summary-table .row-sd { background: rgba(139,92,246,0.08); }
+    .summary-table .row-sd td { color: #c4b5fd; }
+    .summary-table .row-rsd { background: rgba(6,182,212,0.08); }
+    .summary-table .row-rsd td { color: #67e8f9; font-weight: 700; }
+
+    /* Criteria */
+    .criteria { margin-top: 18px; }
+    .criteria-title {
+      font-size: 11px; color: #475569; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+    }
+    .criteria-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; margin-bottom: 6px;
+    }
+    .criteria-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .criteria-dot.green { background: rgba(16,185,129,0.5); border: 1px solid rgba(16,185,129,0.3); }
+    .criteria-dot.yellow { background: rgba(245,158,11,0.5); border: 1px solid rgba(245,158,11,0.3); }
+    .criteria-dot.red { background: rgba(239,68,68,0.5); border: 1px solid rgba(239,68,68,0.3); }
+    .criteria-item.green span { color: rgba(110,231,183,0.8); }
+    .criteria-item.yellow span { color: rgba(252,211,77,0.8); }
+    .criteria-item.red span { color: rgba(252,165,165,0.8); }
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY
+    ═══════════════════════════════════════════════════════════ */
+    #history-section {
+      width: 100%; display: none; margin-top: 16px;
+    }
+    #history-section.show { display: block; animation: fadeSlideUp 0.4s ease-out; }
+    .history-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .history-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: #64748b; font-weight: 600;
+    }
+    .btn-clear-history {
+      font-size: 11px; color: #334155; background: none; border: none;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: color 0.3s;
+    }
+    .btn-clear-history:hover { color: #94a3b8; }
+    .history-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-radius: 14px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+      margin-bottom: 6px;
+      transition: background 0.3s;
+      cursor: default;
+    }
+    .history-item:hover { background: rgba(255,255,255,0.05); }
+    .history-vals {
+      font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #475569;
+    }
+    .history-results {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    }
+    .history-mean { color: #a5b4fc; }
+    .history-rsd-good { color: #6ee7b7; }
+    .history-rsd-ok { color: #fcd34d; }
+    .history-rsd-bad { color: #fca5a5; }
+
+    /* ═══════════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════════ */
+    .footer {
+      margin-top: 36px; text-align: center; font-size: 12px; color: #334155;
+      line-height: 1.8;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════════════════ */
+    @keyframes fadeSlideUp {
+      0% { opacity: 0; transform: translateY(24px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes fadeSlideDown {
+      0% { opacity: 0; transform: translateY(-16px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    .shake { animation: shake 0.45s ease-in-out; }
+    @keyframes countUp {
+      0% { opacity: 0; transform: scale(0.6); }
+      60% { transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .count-up { animation: countUp 0.5s ease-out forwards; }
+  </style>
+</head>
+<body>
+
+  <!-- Particle Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Decorative Blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+  <div class="container">
+
+    <!-- Header -->
+    <div class="badge">
+      <div class="dot"></div>
+      Công cụ phân tích thống kê
+    </div>
+    <header>
+      <h1>Tính Trung Bình<br>& %RSD</h1>
+      <p>Nhập 3 kết quả phân tích để tính giá trị trung bình, độ lệch chuẩn và phần trăm độ lệch chuẩn tương đối</p>
+    </header>
+
+    <!-- Input Card -->
+    <div class="glass-card" id="input-card">
+      <div class="section-title">
+        <div class="section-icon blue">📊</div>
+        <span>Nhập dữ liệu</span>
+      </div>
+
+      <div class="input-group">
+        <div class="icon">🧪</div>
+        <input type="number" id="val1" step="any" placeholder="Kết quả 1" />
+        <div class="tag">#1</div>
+      </div>
+      <div class="input-group">
+        <div class="icon">🔬</div>
+        <input type="number" id="val2" step="any" placeholder="Kết quả 2" />
+        <div class="tag">#2</div>
+      </div>
+      <div class="input-group">
+        <div class="icon">⚗️</div>
+        <input type="number" id="val3" step="any" placeholder="Kết quả 3" />
+        <div class="tag">#3</div>
+      </div>
+
+      <div class="error-msg" id="error-msg">
+        <span>⚠️</span>
+        <span id="error-text"></span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-calc" onclick="calculate()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          Tính toán
+        </button>
+        <button class="btn-reset" onclick="resetAll()">↺ Xóa</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ RESULTS ═══════════════ -->
+    <div id="results-area">
+
+      <!-- Mean & SD Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label indigo">Trung bình (x̄)</div>
+          <div class="stat-value count-up" id="mean-value">0</div>
+          <div class="stat-tag"><div class="dot indigo"></div><span>Mean</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label purple">Độ lệch chuẩn (SD)</div>
+          <div class="stat-value count-up" id="sd-value">0</div>
+          <div class="stat-tag"><div class="dot purple"></div><span>Std Dev</span></div>
+        </div>
+      </div>
+
+      <!-- %RSD Gauge -->
+      <div class="glass-card gauge-card">
+        <div class="gauge-title">Phần trăm độ lệch chuẩn tương đối</div>
+        <div class="gauge-wrap">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle class="gauge-bg" cx="75" cy="75" r="62"/>
+            <circle class="gauge-fill" id="gauge-circle" cx="75" cy="75" r="62"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-value" id="rsd-gauge-value" style="color:#6ee7b7;">0.00</div>
+            <div class="gauge-unit">%RSD</div>
+          </div>
+        </div>
+        <div id="gauge-badge" class="gauge-badge excellent">Xuất sắc ✨</div>
+        <div class="formula-box" id="formula-text">
+          %RSD = (SD / x̄) × 100
+        </div>
+      </div>
+
+      <!-- Bar Chart -->
+      <div class="glass-card bar-chart">
+        <div class="bar-title">📊 Biểu đồ phân bố giá trị</div>
+        <div class="bar-row">
+          <div class="bar-icon">🧪</div>
+          <div class="bar-track">
+            <div class="bar-fill c1" id="bar1"></div>
+            <div class="bar-value" id="bar1-val">0</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-icon">🔬</div>
+          <div class="bar-track">
+            <div class="bar-fill c2" id="bar2"></div>
+            <div class="bar-value" id="bar2-val">0</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-icon">⚗️</div>
+          <div class="bar-track">
+            <div class="bar-fill c3" id="bar3"></div>
+            <div class="bar-value" id="bar3-val">0</div>
+          </div>
+        </div>
+        <div class="mean-row">
+          <div class="bar-icon">📍</div>
+          <div class="mean-track">
+            <div class="mean-line" id="mean-line"></div>
+          </div>
+          <div class="mean-label" id="mean-label">x̄ = 0</div>
+        </div>
+      </div>
+
+      <!-- Summary Table -->
+      <div class="glass-card summary-card">
+        <div class="summary-title">📋 Bảng tóm tắt</div>
+        <table class="summary-table">
+          <thead>
+            <tr><th>Thông số</th><th>Giá trị</th></tr>
+          </thead>
+          <tbody id="summary-body">
+          </tbody>
+        </table>
+        <div class="criteria">
+          <div class="criteria-title">Tiêu chí đánh giá %RSD</div>
+          <div class="criteria-item green"><div class="criteria-dot green"></div><span>≤ 2% — Xuất sắc (Precision tốt)</span></div>
+          <div class="criteria-item yellow"><div class="criteria-dot yellow"></div><span>2% – 5% — Chấp nhận được</span></div>
+          <div class="criteria-item red"><div class="criteria-dot red"></div><span>&gt; 5% — Cần xem xét lại</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div id="history-section" class="glass-card">
+      <div class="history-header">
+        <div class="history-label"><span>🕐</span> Lịch sử tính toán</div>
+        <button class="btn-clear-history" onclick="clearHistory()">Xóa tất cả</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Công thức: %RSD = (SD / x̄) × 100 &nbsp;|&nbsp; SD = √[Σ(xi − x̄)² / (n−1)]</p>
+      <p>Thiết kế bởi ❤️ cho phân tích viên</p>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       JAVASCRIPT
+  ═══════════════════════════════════════════════════════════ -->
+  <script>
+    // ── Particle Background ──────────────────────────────────
+    (function () {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const COLORS = [
+        'rgba(99,102,241,',
+        'rgba(168,85,247,',
+        'rgba(236,72,153,',
+        'rgba(59,130,246,',
+        'rgba(6,182,212,'
+      ];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      for (let i = 0; i < 55; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          size: Math.random() * 2.5 + 0.8,
+          opacity: Math.random() * 0.45 + 0.1,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)]
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = p.color + p.opacity + ')';
+          ctx.fill();
+        });
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 140) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = 'rgba(99,102,241,' + (0.07 * (1 - dist / 140)) + ')';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    // ── History ──────────────────────────────────────────────
+    let history = [];
+
+    // ── Enter key support ────────────────────────────────────
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+    });
+
+    // ── Show Error ───────────────────────────────────────────
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      document.getElementById('error-text').textContent = msg;
+      el.classList.add('show');
+      document.getElementById('input-card').classList.add('shake');
+      setTimeout(() => document.getElementById('input-card').classList.remove('shake'), 450);
+    }
+    function hideError() {
+      document.getElementById('error-msg').classList.remove('show');
+    }
+
+    // ── Animated Counter ─────────────────────────────────────
+    function animateValue(element, start, end, duration, decimals) {
+      const startTime = performance.now();
+      function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        element.textContent = (start + (end - start) * eased).toFixed(decimals);
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    // ── Gauge Helper ─────────────────────────────────────────
+    const CIRCUMFERENCE = 2 * Math.PI * 62;
+
+    function updateGauge(rsd) {
+      const circle = document.getElementById('gauge-circle');
+      const clamped = Math.min(rsd, 10);
+      const pct = clamped / 10;
+      const offset = CIRCUMFERENCE - pct * CIRCUMFERENCE;
+
+      circle.style.strokeDasharray = CIRCUMFERENCE;
+      circle.style.strokeDashoffset = offset;
+
+      let color, cls, label;
+      if (rsd <= 2) {
+        color = '#10b981'; cls = 'excellent'; label = 'Xuất sắc ✨';
+      } else if (rsd <= 5) {
+        color = '#f59e0b'; cls = 'acceptable'; label = 'Chấp nhận 👍';
+      } else {
+        color = '#ef4444'; cls = 'poor'; label = 'Cần xem lại ⚠️';
+      }
+
+      circle.style.stroke = color;
+      circle.style.filter = 'drop-shadow(0 0 10px ' + color + '80)';
+      document.getElementById('rsd-gauge-value').style.color = color;
+
+      const badge = document.getElementById('gauge-badge');
+      badge.className = 'gauge-badge ' + cls;
+      badge.textContent = label;
+    }
+
+    // ── MAIN CALCULATE ───────────────────────────────────────
+    function calculate() {
+      hideError();
+      const v1 = parseFloat(document.getElementById('val1').value);
+      const v2 = parseFloat(document.getElementById('val2').value);
+      const v3 = parseFloat(document.getElementById('val3').value);
+
+      if (isNaN(v1) || isNaN(v2) || isNaN(v3)) {
+        showError('Vui lòng nhập đầy đủ 3 giá trị số!');
+        return;
+      }
+      if (v1 < 0 || v2 < 0 || v3 < 0) {
+        showError('Giá trị không được âm!');
+        return;
+      }
+
+      const nums = [v1, v2, v3];
+      const mean = (v1 + v2 + v3) / 3;
+
+      if (mean === 0) {
+        showError('Giá trị trung bình bằng 0, không thể tính %RSD!');
+        return;
+      }
+
+      const variance = nums.reduce((s, x) => s + Math.pow(x - mean, 2), 0) / 2;
+      const sd = Math.sqrt(variance);
+      const rsd = (sd / mean) * 100;
+
+      // Show results
+      const area = document.getElementById('results-area');
+      area.classList.remove('show');
+      // Force reflow for re-animation
+      void area.offsetWidth;
+      area.classList.add('show');
+
+      // Animate mean & SD
+      animateValue(document.getElementById('mean-value'), 0, mean, 700, 4);
+      animateValue(document.getElementById('sd-value'), 0, sd, 700, 4);
+      animateValue(document.getElementById('rsd-gauge-value'), 0, rsd, 900, 2);
+
+      // Gauge
+      updateGauge(rsd);
+
+      // Formula
+      document.getElementById('formula-text').textContent =
+        '%RSD = (SD / x̄) × 100 = (' + sd.toFixed(4) + ' / ' + mean.toFixed(4) + ') × 100 = ' + rsd.toFixed(2) + '%';
+
+      // Bars
+      const maxVal = Math.max(v1, v2, v3);
+      setTimeout(() => {
+        document.getElementById('bar1').style.width = (v1 / maxVal * 100) + '%';
+        document.getElementById('bar2').style.width = (v2 / maxVal * 100) + '%';
+        document.getElementById('bar3').style.width = (v3 / maxVal * 100) + '%';
+      }, 100);
+      document.getElementById('bar1-val').textContent = v1.toFixed(4);
+      document.getElementById('bar2-val').textContent = v2.toFixed(4);
+      document.getElementById('bar3-val').textContent = v3.toFixed(4);
+      document.getElementById('mean-line').style.left = (mean / maxVal * 100) + '%';
+      document.getElementById('mean-label').textContent = 'x̄ = ' + mean.toFixed(4);
+
+      // Summary table
+      const tbody = document.getElementById('summary-body');
+      tbody.innerHTML = `
+        <tr class="row-val"><td>Giá trị 1</td><td>${v1.toFixed(4)}</td></tr>
+        <tr class="row-val"><td>Giá trị 2</td><td>${v2.toFixed(4)}</td></tr>
+        <tr class="row-val"><td>Giá trị 3</td><td>${v3.toFixed(4)}</td></tr>
+        <tr class="row-mean"><td>Trung bình (x̄)</td><td>${mean.toFixed(4)}</td></tr>
+        <tr class="row-sd"><td>Độ lệch chuẩn (SD)</td><td>${sd.toFixed(4)}</td></tr>
+        <tr class="row-rsd"><td>%RSD</td><td>${rsd.toFixed(2)}%</td></tr>
+      `;
+
+      // History
+      history.unshift({ vals: [v1, v2, v3], mean, rsd });
+      if (history.length > 5) history.pop();
+      renderHistory();
+    }
+
+    // ── RESET ────────────────────────────────────────────────
+    function resetAll() {
+      document.getElementById('val1').value = '';
+      document.getElementById('val2').value = '';
+      document.getElementById('val3').value = '';
+      hideError();
+      document.getElementById('results-area').classList.remove('show');
+      // Reset bars
+      document.getElementById('bar1').style.width = '0';
+      document.getElementById('bar2').style.width = '0';
+      document.getElementById('bar3').style.width = '0';
+    }
+
+    // ── HISTORY ──────────────────────────────────────────────
+    function renderHistory() {
+      const section = document.getElementById('history-section');
+      if (history.length === 0) {
+        section.classList.remove('show');
+        return;
+      }
+      section.classList.add('show');
+
+      const list = document.getElementById('history-list');
+      list.innerHTML = '';
+      history.forEach(h => {
+        let rsdClass = 'history-rsd-good';
+        if (h.rsd > 5) rsdClass = 'history-rsd-bad';
+        else if (h.rsd > 2) rsdClass = 'history-rsd-ok';
+
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div class="history-vals">[${h.vals.map(v => v.toFixed(2)).join(', ')}]</div>
+          <div class="history-results">
+            <span class="history-mean">x̄=${h.mean.toFixed(2)}</span>
+            <span class="${rsdClass}">${h.rsd.toFixed(2)}%</span>
+          </div>
+        `;
+        // Click to re-load values
+        item.addEventListener('click', () => {
+          document.getElementById('val1').value = h.vals[0];
+          document.getElementById('val2').value = h.vals[1];
+          document.getElementById('val3').value = h.vals[2];
+          calculate();
+        });
+        item.style.cursor = 'pointer';
+        list.appendChild(item);
+      });
+    }
+
+    function clearHistory() {
+      history = [];
+      renderHistory();
+    }
+  </script>
+
+  <!-- Vite entry (required by build system, renders nothing visible) -->
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
